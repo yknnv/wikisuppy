@@ -1,6 +1,6 @@
 # wikisuppy
 
-Save BB messages, excerpts, and full threads as Markdown in Obsidian. A linked BB automation processes saved sources and updates your topic notes and index.
+Save BB messages, excerpts, and full threads as Markdown. Open the files in Obsidian or any Markdown editor. Keep the folder in iCloud Drive or another cloud storage service to sync it across devices. A linked BB automation processes saved sources and updates your topic notes and index.
 
 ## Usage
 
@@ -11,7 +11,7 @@ Save BB messages, excerpts, and full threads as Markdown in Obsidian. A linked B
 
 ## Installation
 
-You need BB, Node.js and npm for building, Python 3 on the BB server, and an Obsidian vault with a `SCHEMA.md` file. The server running the importer needs access to the vault.
+You need BB, Node.js and npm for building, Python 3 on the BB server, and a Markdown folder with a `SCHEMA.md` file. The server running the importer needs access to that folder.
 
 ```sh
 npm ci

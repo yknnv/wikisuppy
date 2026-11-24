@@ -1,6 +1,6 @@
 ---
 name: wikisuppy
-description: Save BB messages and threads to Obsidian Knowledge and process the source queue. Use when the user explicitly asks to save something through wikisuppy or start processing sources.
+description: Save BB messages and threads to a Markdown knowledge base and process the source queue. Use when the user explicitly asks to save something through wikisuppy or start processing sources.
 ---
 
 Use `bb wikisuppy status` to check the configuration.

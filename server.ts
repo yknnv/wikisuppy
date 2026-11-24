@@ -68,7 +68,7 @@ async function findImporter() {
 
 export default function plugin(bb: BbPluginApi) {
   const settings = bb.settings.define({
-    vaultPath: { type: "string", label: "Obsidian vault path on the BB server", default: "" },
+    vaultPath: { type: "string", label: "Markdown folder path on the BB server", default: "" },
     automationProjectId: { type: "string", label: "BB automation project ID", default: "" },
     automationId: { type: "string", label: "Source processing automation ID", default: "" },
     bbExecutable: { type: "string", label: "BB CLI path (if bb is missing from PATH)", default: "" },
@@ -203,7 +203,7 @@ export default function plugin(bb: BbPluginApi) {
 
   bb.cli.register(defineCli({
     name: "wikisuppy",
-    summary: "Save BB threads and process Obsidian sources.",
+    summary: "Save BB threads as Markdown and process sources.",
     commands: {
       status: cliCommand({
         summary: "Check vault access and the status of the last sync.",

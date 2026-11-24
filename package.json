@@ -8,7 +8,7 @@
   },
   "bb": {
     "name": "wikisuppy",
-    "description": "Save BB conversations to Obsidian and process sources in Knowledge.",
+    "description": "Save BB conversations as Markdown and process sources in Knowledge.",
     "branding": {
       "icon": "BookOpen"
     },
