@@ -1,17 +1,17 @@
 # wikisuppy
 
-Плагин BB для Obsidian. Сохраняет сообщения, выделенный текст и целые диалоги из BB в Markdown. Разбор запускает связанную автоматизацию Knowledge, которая обновляет тематические заметки и оглавление.
+Save BB messages, excerpts, and full threads as Markdown in Obsidian. A linked BB automation processes saved sources and updates your topic notes and index.
 
-## Использование
+## Usage
 
-- В меню сообщения или выделенного текста нажми **Сохранить в wiki**.
-- В меню `⋯` рядом с тредом в боковом списке выбери **Сохранить тред в wiki**.
-- В палитре BB (`⌘⇧P` на Mac) выбери **wikisuppy: сохранить весь тред** или **wikisuppy: разобрать исходники**.
-- В терминале доступны `bb wikisuppy status`, `bb wikisuppy sync` и `bb wikisuppy save-thread <ID>`. Аргумент `--raw-only` оставляет тред вне автоматического разбора.
+- Choose **Save to wiki** in a message’s action bar or from the text selection menu.
+- Choose **Save thread to wiki** from the `⋯` menu next to a thread in the sidebar.
+- Open the BB command palette (`⌘⇧P` on Mac) and choose **wikisuppy — Save thread** or **wikisuppy — Process sources**.
+- From the terminal, run `bb wikisuppy status`, `bb wikisuppy sync`, or `bb wikisuppy save-thread <ID>`. Add `--raw-only` to exclude a thread from automatic processing.
 
-## Установка
+## Installation
 
-Нужны BB, Node.js с npm для сборки, Python 3 на сервере BB и папка Obsidian Knowledge с `SCHEMA.md`. В версии 0.1.0 Python-импорт работает на машине, где запущен сервер BB и доступно хранилище.
+You need BB, Node.js and npm for building, Python 3 on the BB server, and an Obsidian vault with a `SCHEMA.md` file. The server running the importer needs access to the vault.
 
 ```sh
 npm ci
@@ -20,14 +20,14 @@ bb plugin build
 bb plugin install .
 ```
 
-В настройках wikisuppy укажи абсолютный путь к хранилищу, ID проекта BB и ID автоматизации разбора. Если BB или Python отсутствует в PATH сервера, укажи абсолютные пути к исполняемым файлам в дополнительных настройках.
+Enter the absolute vault path, the BB project ID, and the processing automation ID in the wikisuppy settings. If BB or Python is missing from the server’s PATH, enter the absolute path to its executable in the corresponding setting.
 
-Для существующей автоматизации Knowledge используй `bb wikisuppy archive` в качестве шага импорта. Команда возвращает JSON с полями `pending` и `errors`. Она использует прежние архивные файлы, блокировку импорта и `.bb/wiki-sync/wiki-cursors.json`. Записи очереди привязаны к ID **источника**, который может быть тредом BB или отдельным сохранением. У каждого источника есть относительный путь, последний номер сообщения и курсор разбора. Для новой автоматизации есть [пример инструкции](automation.md).
+Use `bb wikisuppy archive` as the import step in an existing Knowledge automation. It returns JSON with `pending` and `errors` fields and uses the existing archive, import lock, and `.bb/wiki-sync/wiki-cursors.json` file. Each queue entry has a source ID, a path relative to the vault, the last message number, and the processing cursor. A source can be a BB thread or a single capture. See [the automation template](automation.md) to set up a new scheduled run.
 
-## Адаптеры источников
+## Source adapters
 
-Адаптер BB в `bb-source.ts` преобразует сообщение в контракт `sourceCapture` из `capture.ts`. В контракте есть имя адаптера, сервис, ID диалога и сообщения, дата, заголовок, текст, признак выделенного фрагмента и необязательные поля для ссылки и контекста. Сервис определяет папку `raw/<сервис>/`. ID сохранения вычисляется из адаптера, сервиса, внешних ID и текста выделения. Один и тот же фрагмент при повторном сохранении даёт тот же ID.
+The BB adapter in `bb-source.ts` converts a message into the `sourceCapture` contract defined in `capture.ts`. The contract includes the adapter name, service, conversation and message IDs, date, title, text, excerpt flag, and optional reference and context. The service determines the folder under `raw/<service>/`. The adapter name, service, external IDs, and selected text determine the capture ID so repeated saves can reuse the same source.
 
-Адаптеры ChatGPT, Claude и Gemini смогут использовать этот же формат. Подключение внешнего адаптера потребует своего способа получить данные и передать их в обработчик сохранения. В версии 0.1.0 подключён адаптер BB.
+The current release includes the BB adapter. Future adapters for ChatGPT, Claude, and Gemini can use the same contract to pass their source data to the capture handler.
 
-При сохранении остаются оригинальный текст, ссылка на сообщение и, для ответа, доступный вопрос из того же хода. Правила тематических папок, явного согласия на удаление и оформления журнала определяет `SCHEMA.md` в хранилище.
+Saved sources retain the original text and a reference to the message. For assistant replies, they also include the question from the same turn when available. The vault’s `SCHEMA.md` governs topic folders and log entries. Follow the vault’s instructions for deletion approval.

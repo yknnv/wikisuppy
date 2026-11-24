@@ -42,13 +42,13 @@ export const rpcContract = defineRpcContract({
 
 function absoluteVaultPath(path: string) {
   if (!isAbsolute(path) || path === "/") {
-    throw new Error("Укажи абсолютный путь к Knowledge в настройках wikisuppy.");
+    throw new Error("Enter an absolute vault path in the wikisuppy settings.");
   }
   return path;
 }
 
 function executablePath(configured: string, fallback: string) {
-  if (configured && !isAbsolute(configured)) throw new Error("Укажи абсолютный путь к исполняемому файлу.");
+  if (configured && !isAbsolute(configured)) throw new Error("Enter an absolute path to the executable.");
   return configured || fallback;
 }
 
@@ -63,16 +63,16 @@ async function findImporter() {
       if (!(error instanceof Error && "code" in error && error.code === "ENOENT")) throw error;
     }
   }
-  throw new Error("В установленном wikisuppy отсутствует скрипт импорта.");
+  throw new Error("The wikisuppy installation is missing its import script.");
 }
 
 export default function plugin(bb: BbPluginApi) {
   const settings = bb.settings.define({
-    vaultPath: { type: "string", label: "Абсолютный путь к Obsidian Knowledge на сервере BB", default: "" },
-    automationProjectId: { type: "string", label: "ID проекта автоматизации BB", default: "" },
-    automationId: { type: "string", label: "ID автоматизации разбора", default: "" },
-    bbExecutable: { type: "string", label: "Путь к CLI BB (если bb отсутствует в PATH)", default: "" },
-    pythonExecutable: { type: "string", label: "Путь к Python 3 (если python3 отсутствует в PATH)", default: "" },
+    vaultPath: { type: "string", label: "Obsidian vault path on the BB server", default: "" },
+    automationProjectId: { type: "string", label: "BB automation project ID", default: "" },
+    automationId: { type: "string", label: "Source processing automation ID", default: "" },
+    bbExecutable: { type: "string", label: "BB CLI path (if bb is missing from PATH)", default: "" },
+    pythonExecutable: { type: "string", label: "Python 3 path (if python3 is missing from PATH)", default: "" },
   });
 
   function bbExecutable(config: Awaited<ReturnType<typeof settings.get>>) {
@@ -144,14 +144,14 @@ export default function plugin(bb: BbPluginApi) {
       if (error instanceof Error && "stdout" in error && typeof error.stdout === "string" && error.stdout.trim()) {
         return archiveResult.parse(JSON.parse(error.stdout));
       }
-      throw new Error("Импорт BB завершился ошибкой. Проверь настройки wikisuppy и пути к BB и Python 3.", { cause: error });
+      throw new Error("BB import failed. Check the wikisuppy settings and the paths to BB and Python 3.", { cause: error });
     }
   }
 
   async function saveThread(input: z.input<typeof saveThreadInput>) {
     const request = saveThreadInput.parse(input);
     const data = await runArchive({ thread: request.threadId, rawOnly: request.rawOnly });
-    if (data.errors.length || !data.source) throw new Error("В треде нет доступных сообщений для импорта, либо BB вернул ошибку.");
+    if (data.errors.length || !data.source) throw new Error("The thread has no messages available to import, or BB returned an error.");
     return {
       id: data.source.id,
       path: data.source.path,
@@ -163,7 +163,7 @@ export default function plugin(bb: BbPluginApi) {
     const config = await settings.get();
     if (!/^proj_[a-zA-Z0-9_-]+$/.test(config.automationProjectId) ||
         !/^auto_[a-zA-Z0-9_-]+$/.test(config.automationId)) {
-      throw new Error("Укажи ID проекта и автоматизации разбора в настройках wikisuppy.");
+      throw new Error("Enter the project and automation IDs in the wikisuppy settings.");
     }
     const args = ["automation", verb, config.automationId, "--project", config.automationProjectId, "--json"];
     if (verb === "runs") args.push("--limit", "10");
@@ -171,7 +171,7 @@ export default function plugin(bb: BbPluginApi) {
       const { stdout } = await execute(bbExecutable(config), args, { timeout: 15_000 });
       return schema.parse(JSON.parse(stdout));
     } catch (error) {
-      throw new Error("BB не ответил на запрос автоматизации. Проверь её ID и путь к bb.", { cause: error });
+      throw new Error("BB could not complete the automation request. Check its ID and the BB CLI path.", { cause: error });
     }
   }
 
@@ -184,7 +184,7 @@ export default function plugin(bb: BbPluginApi) {
       if (active) return { ...active, alreadyRunning: true };
       const { run } = await automationCommand("run", z.object({ run: runDirection }));
       if (run.error || ["failed", "skipped"].includes(run.status)) {
-        throw new Error(run.error || "BB не запустил обработку.");
+        throw new Error(run.error || "BB could not start source processing.");
       }
       return { ...run, alreadyRunning: false };
     })();
@@ -203,10 +203,10 @@ export default function plugin(bb: BbPluginApi) {
 
   bb.cli.register(defineCli({
     name: "wikisuppy",
-    summary: "Сохранение тредов BB и разбор источников Obsidian.",
+    summary: "Save BB threads and process Obsidian sources.",
     commands: {
       status: cliCommand({
-        summary: "Проверить хранилище и состояние разбора.",
+        summary: "Check vault access and the status of the last sync.",
         async run() {
           await vaultSettings();
           const { runs } = await automationCommand("runs", runsResponse);
@@ -214,19 +214,19 @@ export default function plugin(bb: BbPluginApi) {
         },
       }),
       "save-thread": cliCommand({
-        summary: "Сохранить полный тред в raw.",
-        positionals: [{ name: "thread", description: "ID треда BB", required: true }],
-        options: { "raw-only": { type: "boolean", description: "Исключить источник из автоматического разбора" } },
+        summary: "Save a full thread to raw.",
+        positionals: [{ name: "thread", description: "BB thread ID", required: true }],
+        options: { "raw-only": { type: "boolean", description: "Exclude this source from automatic processing" } },
         async run(input) {
           const saved = await saveThread({ threadId: input.positionals.thread, rawOnly: input.options["raw-only"] });
           return { exitCode: 0, stdout: JSON.stringify(saved) };
         },
       }),
       "save-message": cliCommand({
-        summary: "Сохранить сообщение BB и добавить его в очередь разбора.",
+        summary: "Save a BB message and queue it for processing.",
         positionals: [
-          { name: "thread", description: "ID треда BB", required: true },
-          { name: "sequence", description: "Номер сообщения в BB", required: true },
+          { name: "thread", description: "BB thread ID", required: true },
+          { name: "sequence", description: "BB message sequence number", required: true },
         ],
         async run(input) {
           const saved = await captureMessage({
@@ -237,14 +237,14 @@ export default function plugin(bb: BbPluginApi) {
         },
       }),
       archive: cliCommand({
-        summary: "Импортировать чаты BB и вывести очередь разбора в JSON.",
+        summary: "Import BB chats and return the processing queue as JSON.",
         async run() {
           const archive = await runArchive();
           return { exitCode: archive.errors.length ? 1 : 0, stdout: JSON.stringify(archive) };
         },
       }),
       sync: cliCommand({
-        summary: "Запустить разбор сразу или показать уже активный прогон.",
+        summary: "Start processing or return the active run.",
         async run() {
           return { exitCode: 0, stdout: JSON.stringify(await runSync()) };
         },

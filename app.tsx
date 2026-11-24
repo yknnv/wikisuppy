@@ -20,17 +20,17 @@ async function invoke<T>(method: "save_message" | "save_thread" | "run_sync", in
 
 function showError(error: unknown) {
   toast.error("wikisuppy", {
-    description: error instanceof Error ? error.message : "Операция не выполнена.",
+    description: error instanceof Error ? error.message : "The operation could not be completed.",
   });
 }
 
 function showSaved(saved: SaveResult) {
-  toast.success(saved.outcome === "saved" ? "Сохранено в Knowledge" : "Уже сохранено", {
+  toast.success(saved.outcome === "saved" ? "Saved to Knowledge" : "Already saved", {
     description: saved.path,
   });
 }
 
-const saveThreadLabel = "Сохранить тред в wiki";
+const saveThreadLabel = "Save thread to wiki";
 
 async function saveThread(threadId: string) {
   try {
@@ -54,7 +54,7 @@ export default definePluginApp((app) => {
   });
   app.slots.messageAction({
     id: "save-message",
-    title: "Сохранить в wiki",
+    title: "Save to wiki",
     icon: "Bookmark",
     async run({ threadId, message, selectedText }) {
       try {
@@ -71,17 +71,17 @@ export default definePluginApp((app) => {
   });
   app.commands.register({
     id: "save-thread",
-    title: "wikisuppy: сохранить весь тред",
+    title: "wikisuppy — Save thread",
     isAvailable: ({ threadId }) => threadId !== null,
     run: ({ threadId }) => threadId ? saveThread(threadId) : undefined,
   });
   app.commands.register({
     id: "run-sync",
-    title: "wikisuppy: разобрать исходники",
+    title: "wikisuppy — Process sources",
     async run() {
       try {
         const run = await invoke<SyncResult>("run_sync", null);
-        toast.success(run.alreadyRunning ? "Разбор уже идёт" : "Разбор запущен", {
+        toast.success(run.alreadyRunning ? "Sync already running" : "Sync started", {
           description: run.id,
         });
       } catch (error) {

@@ -31,7 +31,7 @@ function cleanTitle(title: string) {
     .replace(/\s+/gu, " ")
     .slice(0, 64)
     .trim()
-    .replace(/\.+$/u, "") || "Диалог";
+    .replace(/\.+$/u, "") || "Conversation";
 }
 
 // The adapter owns external IDs; storage and queue semantics are shared.
@@ -46,18 +46,18 @@ export function renderCapture(input: z.input<typeof sourceCapture>) {
   const date = dateLabel.format(source.createdAt);
   const path = `raw/${source.service}/${date} — ${title} — ${id}.md`;
   const metadata = [
-    `- Источник: ${source.adapter}`,
-    `- Сервис: ${source.service}`,
-    `- Диалог: ${JSON.stringify(source.conversationId)}`,
-    `- Сообщение: ${JSON.stringify(source.entryId)}`,
-    source.reference && `- Ссылка: ${source.reference.replace(/[\r\n]/g, " ")}`,
+    `- Source: ${source.adapter}`,
+    `- Service: ${source.service}`,
+    `- Conversation: ${JSON.stringify(source.conversationId)}`,
+    `- Message: ${JSON.stringify(source.entryId)}`,
+    source.reference && `- Reference: ${source.reference.replace(/[\r\n]/g, " ")}`,
   ].filter(Boolean).join("\n");
-  const context = source.context ? `## Вопрос\n\n${source.context}\n\n` : "";
+  const context = source.context ? `## Question\n\n${source.context}\n\n` : "";
   const content = [
     `<!-- wikisuppy-capture:${id} -->`,
     `# ${title}\n\n${metadata}\n`,
     `<!-- bb-message:${id}:1 -->`,
-    `${context}## ${source.excerpt ? "Выделенный фрагмент" : "Сообщение"}\n\n${source.text}\n`,
+    `${context}## ${source.excerpt ? "Selected text" : "Message"}\n\n${source.text}\n`,
   ].join("\n");
   return { id, path, content };
 }

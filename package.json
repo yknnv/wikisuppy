@@ -1,6 +1,6 @@
 {
   "name": "bb-plugin-wikisuppy",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "type": "module",
   "engines": {
     "bb": ">=0.50",
@@ -8,7 +8,7 @@
   },
   "bb": {
     "name": "wikisuppy",
-    "description": "Сохранение чатов BB в Obsidian и запуск разбора Knowledge.",
+    "description": "Save BB conversations to Obsidian and process sources in Knowledge.",
     "branding": {
       "icon": "BookOpen"
     },

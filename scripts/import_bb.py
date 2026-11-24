@@ -38,12 +38,12 @@ def transcript(events):
         data = row["data"]
         if row["type"] == "client/turn/requested" and data.get("initiator") == "user":
             parts = [part["text"] for part in data.get("input", []) if part.get("type") == "text"]
-            role, body = "Пользователь", "\n\n".join(parts)
+            role, body = "User", "\n\n".join(parts)
         elif row["type"] == "item/completed":
             item = data.get("item", {})
             if item.get("type") != "agentMessage" or item.get("parentToolCallId"):
                 continue
-            role, body = "Ассистент", item.get("text", "")
+            role, body = "Assistant", item.get("text", "")
         else:
             continue
         if isinstance(body, str) and body.strip():
@@ -70,7 +70,7 @@ def archive(thread, path, current, last_seq, raw_only):
             return None
         messages = list(transcript(events))
         if messages and not current:
-            current = f'# {thread["title"] or tid}\n\n- Источник: BB\n- Тред: {tid}\n'
+            current = f'# {thread["title"] or tid}\n\n- Source: BB\n- Thread: {tid}\n'
         current += "".join(
             f'\n<!-- bb-message:{tid}:{seq} -->\n'
             f'## {role} · {when:%Y-%m-%d %H:%M}\n\n{body}\n'
@@ -106,8 +106,8 @@ def process(thread, existing, raw_only):
     )
     if not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", provider):
         provider = "unknown"
-    title = re.sub(r'[^\w .,()—–-]', ' ', thread["title"] or "Диалог")
-    title = " ".join(title.split())[:80].strip(" .") or "Диалог"
+    title = re.sub(r'[^\w .,()—–-]', ' ', thread["title"] or "Conversation")
+    title = " ".join(title.split())[:80].strip(" .") or "Conversation"
     stamp = local_time(thread["createdAt"]).date()
     original = existing.get(tid)
     path = vault_path(original or VAULT / "raw" / provider / f"{stamp} — {title} — {tid}.md")

@@ -23,7 +23,7 @@ export async function readBbCapture(bb: BbPluginApi, input: z.input<typeof messa
     bb.sdk.threads.message({ threadId: request.threadId, seq: request.sequence, before: 10 }),
   ]);
   if (thread.deletedAt || thread.visibility === "hidden") {
-    throw new Error("Для сохранения открой обычный тред BB.");
+    throw new Error("Open a visible BB thread to save it.");
   }
   const { message, before } = result;
   const question = message.role === "assistant" ? [...before].reverse().find((row) =>
@@ -34,7 +34,7 @@ export async function readBbCapture(bb: BbPluginApi, input: z.input<typeof messa
     service: serviceName(thread.providerId),
     conversationId: thread.id,
     entryId: String(message.messageSeq),
-    title: thread.title ?? "Диалог BB",
+    title: thread.title ?? "BB conversation",
     createdAt: message.createdAt,
     reference: `@thread:${thread.id}#msg=${message.messageSeq}`,
     context: question?.text.slice(0, 100_000),
