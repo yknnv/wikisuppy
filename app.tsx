@@ -1,4 +1,4 @@
-import { definePluginApp } from "@get-bb/plugin-sdk/app";
+import { definePluginApp, experimental_THREAD_ACTION_GROUPS } from "@get-bb/plugin-sdk/app";
 import { toast } from "sonner";
 
 type SaveResult = { path: string; outcome: "saved" | "existing" };
@@ -30,7 +30,28 @@ function showSaved(saved: SaveResult) {
   });
 }
 
+const saveThreadLabel = "Сохранить тред в wiki";
+
+async function saveThread(threadId: string) {
+  try {
+    showSaved(await invoke<SaveResult>("save_thread", { threadId }));
+  } catch (error) {
+    showError(error);
+  }
+}
+
 export default definePluginApp((app) => {
+  app.slots.experimental_threadAction({
+    id: "save-thread",
+    title: saveThreadLabel,
+    icon: "Bookmark",
+    group: experimental_THREAD_ACTION_GROUPS.open,
+    item: ({ thread }) => ({
+      label: saveThreadLabel,
+      icon: "Bookmark",
+      run: () => saveThread(thread.id),
+    }),
+  });
   app.slots.messageAction({
     id: "save-message",
     title: "Сохранить в wiki",
@@ -52,14 +73,7 @@ export default definePluginApp((app) => {
     id: "save-thread",
     title: "wikisuppy: сохранить весь тред",
     isAvailable: ({ threadId }) => threadId !== null,
-    async run({ threadId }) {
-      if (!threadId) return;
-      try {
-        showSaved(await invoke<SaveResult>("save_thread", { threadId }));
-      } catch (error) {
-        showError(error);
-      }
-    },
+    run: ({ threadId }) => threadId ? saveThread(threadId) : undefined,
   });
   app.commands.register({
     id: "run-sync",
