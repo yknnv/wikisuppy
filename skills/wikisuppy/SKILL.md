@@ -3,7 +3,7 @@ name: wikisuppy
 description: Save BB messages and threads to a Markdown knowledge base and process the source queue. Use when the user explicitly asks to save something through wikisuppy or start processing sources.
 ---
 
-Use `bb wikisuppy status` to check the configuration.
+Use `bb wikisuppy status` to check the configuration. Use `bb wikisuppy setup [path]` for initial setup. Add `--daily` only when the user asks to schedule imports from all BB projects.
 
 - `bb wikisuppy save-thread <ID>` saves a conversation. For the current thread, use `BB_THREAD_ID`.
 - `bb wikisuppy save-thread <ID> --raw-only` excludes the source from automatic processing.

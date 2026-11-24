@@ -11,7 +11,15 @@ Save BB messages, excerpts, and full threads as Markdown. Open the files in Obsi
 
 ## Installation
 
-You need BB, Node.js and npm for building, Python 3 on the BB server, and a Markdown folder with a `SCHEMA.md` file. The server running the importer needs access to that folder.
+Install **wikisuppy** from BB Community. Open its settings and use **Set up wikisuppy**. An existing Markdown vault in a registered project is suggested automatically. You can also choose a folder or use the default `~/Knowledge`. Setup creates missing starter files and keeps existing ones.
+
+Choose **Create a daily automation if one is missing** to process conversations from all BB projects at 6:00 PM server time. Setup reuses a matching automation and uses an available BB provider when creating one. The BB CLI and Python 3 are discovered on the server. The advanced settings support explicit overrides.
+
+From the terminal, run `bb wikisuppy setup`. To choose a non-default folder and enable scheduling, run `bb wikisuppy setup /absolute/path --daily`.
+
+### Install from source
+
+You need BB, Node.js and npm for building, and Python 3 for importing threads. The BB server needs access to the Markdown folder.
 
 ```sh
 npm ci
@@ -20,7 +28,7 @@ bb plugin build
 bb plugin install .
 ```
 
-Enter the absolute vault path, the BB project ID, and the processing automation ID in the wikisuppy settings. If BB or Python is missing from the server’s PATH, enter the absolute path to its executable in the corresponding setting.
+Use the same setup form after installing from source.
 
 Use `bb wikisuppy archive` as the import step in an existing Knowledge automation. It returns JSON with `pending` and `errors` fields and uses the existing archive, import lock, and `.bb/wiki-sync/wiki-cursors.json` file. Each queue entry has a source ID, a path relative to the vault, the last message number, and the processing cursor. A source can be a BB thread or a single capture. See [the automation template](automation.md) to set up a new scheduled run.
 

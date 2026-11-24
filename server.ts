@@ -1,14 +1,15 @@
-import { execFile } from "node:child_process";
-import { access } from "node:fs/promises";
-import { dirname, isAbsolute, join } from "node:path";
+import { access, realpath } from "node:fs/promises";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { promisify } from "node:util";
 import { cliCommand, defineCli, defineRpcContract, type BbPluginApi } from "@get-bb/plugin-sdk";
 import { z } from "zod";
 import { messageInput, messageSequence, readBbCapture, threadId } from "./bb-source";
 import { captureResult, renderCapture } from "./capture";
 
-const execute = promisify(execFile);
+import {
+  bbJson, connectSchedule, discoverExecutable, execute, initializeVault, isVaultFolder, pickFolder,
+  resolveAutomation, resolveVault, setupInput, setupResult, setupState, suggestedSetup,
+} from "./setup";
 const runDirection = z.object({
   id: z.string(),
   status: z.string(),
@@ -38,19 +39,10 @@ export const rpcContract = defineRpcContract({
   save_message: { input: messageInput, output: captureResult },
   save_thread: { input: saveThreadInput, output: captureResult },
   run_sync: { input: z.null(), output: syncResult },
+  setup_status: { input: z.null(), output: setupState },
+  setup_pick: { input: z.null(), output: z.object({ path: z.string().nullable() }) },
+  setup_apply: { input: setupInput, output: setupResult },
 });
-
-function absoluteVaultPath(path: string) {
-  if (!isAbsolute(path) || path === "/") {
-    throw new Error("Enter an absolute vault path in the wikisuppy settings.");
-  }
-  return path;
-}
-
-function executablePath(configured: string, fallback: string) {
-  if (configured && !isAbsolute(configured)) throw new Error("Enter an absolute path to the executable.");
-  return configured || fallback;
-}
 
 async function findImporter() {
   // Path installs execute the TypeScript entry. Bundled installs run it in dist/.
@@ -75,15 +67,38 @@ export default function plugin(bb: BbPluginApi) {
     pythonExecutable: { type: "string", label: "Python 3 path (if python3 is missing from PATH)", default: "" },
   });
 
-  function bbExecutable(config: Awaited<ReturnType<typeof settings.get>>) {
-    return executablePath(config.bbExecutable, process.env.BB_CLI || "bb");
-  }
-
   async function vaultSettings() {
     const config = await settings.get();
-    const rootPath = absoluteVaultPath(config.vaultPath);
+    const rootPath = await resolveVault(bb, config.vaultPath);
     await bb.sdk.files.read({ rootPath, path: join(rootPath, "SCHEMA.md") });
     return { config, rootPath };
+  }
+
+  let setupInProgress = false;
+  async function applySetup(input: z.infer<typeof setupInput>): Promise<z.infer<typeof setupResult>> {
+    if (setupInProgress) throw new Error("Setup is already running.");
+    setupInProgress = true;
+    try {
+      const config = await settings.get();
+      const path = await initializeVault(bb, input.path);
+      const picked = await connectSchedule(bb, config, path, input.daily).then(
+        (schedule) => ({ schedule, error: undefined }),
+        (error: unknown) => ({ schedule: null, error: error instanceof Error ? error.message : String(error) }),
+      );
+      const keepSavedSchedule = picked.error && config.vaultPath && await realpath(config.vaultPath).catch(() => null) === path;
+      await settings.experimental_set({
+        vaultPath: path,
+        automationProjectId: picked.schedule?.projectId ?? (keepSavedSchedule ? config.automationProjectId : ""),
+        automationId: picked.schedule?.automationId ?? (keepSavedSchedule ? config.automationId : ""),
+      });
+      return {
+        path,
+        schedule: picked.schedule?.schedule ?? "off",
+        ...(picked.error ? { scheduleError: picked.error } : {}),
+      };
+    } finally {
+      setupInProgress = false;
+    }
   }
 
   const capturesInFlight = new Map<string, Promise<z.infer<typeof captureResult>>>();
@@ -129,14 +144,20 @@ export default function plugin(bb: BbPluginApi) {
     return persistCapture(await readBbCapture(bb, input));
   }
 
-  async function runArchive(options: { thread?: string; rawOnly?: boolean } = {}) {
+  async function runArchive(options: { thread?: string; rawOnly?: boolean; cwd?: string } = {}) {
     const { config, rootPath } = await vaultSettings();
-    const executable = executablePath(config.pythonExecutable, "python3");
+    if (options.cwd && await realpath(options.cwd) !== await realpath(rootPath)) {
+      throw new Error("This automation is running outside the configured Markdown folder.");
+    }
+    const [executable, bbExecutable] = await Promise.all([
+      discoverExecutable(config.pythonExecutable, "python"),
+      discoverExecutable(config.bbExecutable, "bb"),
+    ]);
     const importer = await findImporter();
     const args = [importer, "--vault", rootPath];
     if (options.thread) args.push("--thread", threadId.parse(options.thread));
     if (options.rawOnly) args.push("--raw-only");
-    const env = { ...process.env, WIKISUPPY_BB_CLI: bbExecutable(config) };
+    const env = { ...process.env, WIKISUPPY_BB_CLI: bbExecutable };
     try {
       const { stdout } = await execute(executable, args, { env, timeout: 300_000, maxBuffer: 8 * 1024 * 1024 });
       return archiveResult.parse(JSON.parse(stdout));
@@ -161,15 +182,16 @@ export default function plugin(bb: BbPluginApi) {
 
   async function automationCommand<T>(verb: "runs" | "run", schema: z.ZodType<T>) {
     const config = await settings.get();
-    if (!/^proj_[a-zA-Z0-9_-]+$/.test(config.automationProjectId) ||
-        !/^auto_[a-zA-Z0-9_-]+$/.test(config.automationId)) {
-      throw new Error("Enter the project and automation IDs in the wikisuppy settings.");
+    const executable = await discoverExecutable(config.bbExecutable, "bb");
+    const automation = await resolveAutomation(bb, config, executable);
+    if (!automation) {
+      if (verb === "runs") return schema.parse({ runs: [] });
+      throw new Error("Enable daily processing in wikisuppy settings to create an automation.");
     }
-    const args = ["automation", verb, config.automationId, "--project", config.automationProjectId, "--json"];
+    const args = ["automation", verb, automation.automationId, "--project", automation.projectId];
     if (verb === "runs") args.push("--limit", "10");
     try {
-      const { stdout } = await execute(bbExecutable(config), args, { timeout: 15_000 });
-      return schema.parse(JSON.parse(stdout));
+      return schema.parse(await bbJson(executable, args));
     } catch (error) {
       throw new Error("BB could not complete the automation request. Check its ID and the BB CLI path.", { cause: error });
     }
@@ -199,12 +221,26 @@ export default function plugin(bb: BbPluginApi) {
     save_message: captureMessage,
     save_thread: saveThread,
     run_sync: runSync,
+    setup_status: async () => suggestedSetup(bb, await settings.get()),
+    setup_pick: async () => pickFolder(bb),
+    setup_apply: applySetup,
   });
 
   bb.cli.register(defineCli({
     name: "wikisuppy",
     summary: "Save BB threads as Markdown and process sources.",
     commands: {
+      setup: cliCommand({
+        summary: "Set up a Markdown folder and optionally enable daily processing.",
+        positionals: [{ name: "path", description: "Absolute folder path. Defaults to the single detected vault or ~/Knowledge." }],
+        options: { daily: { type: "boolean", description: "Schedule daily processing of conversations from all BB projects" } },
+        async run(input) {
+          const path = input.positionals.path || (await suggestedSetup(bb, await settings.get())).path;
+          if (!path) throw new Error("Multiple Markdown folders were found. Choose one in wikisuppy settings.");
+          const result = await applySetup({ path, daily: input.options.daily ?? false });
+          return { exitCode: result.scheduleError ? 1 : 0, stdout: JSON.stringify(result) };
+        },
+      }),
       status: cliCommand({
         summary: "Check vault access and the status of the last sync.",
         async run() {
@@ -238,8 +274,11 @@ export default function plugin(bb: BbPluginApi) {
       }),
       archive: cliCommand({
         summary: "Import BB chats and return the processing queue as JSON.",
-        async run() {
-          const archive = await runArchive();
+        options: { here: { type: "boolean", description: "Require the automation to run from the configured folder" } },
+        async run(input, ctx) {
+          if (input.options.here && !ctx.cwd) throw new Error("Start this automation from the Markdown folder.");
+          const vaultContext = ctx.cwd && (input.options.here || await isVaultFolder(ctx.cwd));
+          const archive = await runArchive({ cwd: vaultContext ? ctx.cwd : undefined });
           return { exitCode: archive.errors.length ? 1 : 0, stdout: JSON.stringify(archive) };
         },
       }),

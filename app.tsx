@@ -1,5 +1,6 @@
 import { definePluginApp, experimental_THREAD_ACTION_GROUPS } from "@get-bb/plugin-sdk/app";
 import { toast } from "sonner";
+import { SetupPanel } from "./setup-panel";
 
 type SaveResult = { path: string; outcome: "saved" | "existing" };
 type SyncResult = { id: string; status: string; alreadyRunning: boolean };
@@ -41,6 +42,12 @@ async function saveThread(threadId: string) {
 }
 
 export default definePluginApp((app) => {
+  app.slots.settingsSection({
+    id: "setup",
+    title: "Set up wikisuppy",
+    description: "Choose a Markdown folder for saved chats and topic notes.",
+    component: SetupPanel,
+  });
   app.slots.experimental_threadAction({
     id: "save-thread",
     title: saveThreadLabel,
