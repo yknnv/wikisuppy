@@ -9,6 +9,12 @@ Save BB messages, excerpts, and full threads as Markdown. Open the files in Obsi
 - Open the BB command palette (`⌘⇧P` on Mac) and choose **wikisuppy — Save thread** or **wikisuppy — Process sources**.
 - From the terminal, run `bb wikisuppy status`, `bb wikisuppy sync`, or `bb wikisuppy save-thread <ID>`. Add `--raw-only` to exclude a thread from automatic processing.
 
+## Wiki context in BB
+
+Once the Markdown folder is configured, BB agents can search your wiki when a request depends on past decisions, conventions, or research. For example, ask “Based on our wiki, how is the autopilot schedule configured?” The agent receives up to three excerpts with their Markdown paths. The search covers the folder in `wiki/` named after the current BB project and shared folders (`Общие темы`, `General`, or `Shared`). A project connected to the configured vault can search the full `wiki/` tree. Searches use topic notes and skip the raw chat archive.
+
+Turn off **Use wiki context in BB agent sessions** in wikisuppy settings to remove the tool from new agent sessions. Start a new thread to pick up changes to tool availability. For a direct search across the wiki, run `bb wikisuppy context "autopilot schedule"`.
+
 ## Installation
 
 Install **wikisuppy** from BB Community. Open its settings and use **Set up wikisuppy**. An existing Markdown vault in a registered project is suggested automatically. You can also choose a folder or use the default `~/Knowledge`. Setup creates missing starter files and keeps existing ones.
