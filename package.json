@@ -1,6 +1,7 @@
 {
   "name": "bb-plugin-wikisuppy",
-  "version": "0.1.4",
+  "version": "0.1.5",
+  "author": "Iurii Kononov",
   "type": "module",
   "engines": {
     "bb": ">=0.50",
